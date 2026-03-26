@@ -1,0 +1,218 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    function isDocOwner() {
+      return isAuthenticated() && request.auth.uid == resource.data.owner_id;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && 
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+         request.auth.token.email == "bennietay.agency@gmail.com");
+    }
+
+    function uidUnchanged() {
+      return !('owner_id' in request.resource.data) ||
+        request.resource.data.owner_id == request.auth.uid;
+    }
+
+    function uidNotModified() {
+      return !('owner_id' in request.resource.data) ||
+        request.resource.data.owner_id == resource.data.owner_id;
+    }
+
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    function isValidEmail(email) {
+      return email is string && email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    function isValidUrl(url) {
+      return url is string && (url.matches("^https://.*") || url.matches("^http://.*"));
+    }
+
+    function isValidDateString(dateStr) {
+      return dateStr is string && dateStr.matches("^\\d{4}-\\d{2}-\\d{2}(T\\d{2}:\\d{2}(:\\d{2})?.*Z?)?$");
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['name', 'email']) &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 200 &&
+             isValidEmail(data.email);
+    }
+
+    function isValidLead(data) {
+      return data.keys().hasAll(['owner_id', 'name', 'status']) &&
+             data.owner_id == request.auth.uid &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 200 &&
+             data.status in ['Prospect', 'Invited', 'Presented', 'Follow-up', 'Onboarded'] &&
+             (!('email' in data) || isValidEmail(data.email)) &&
+             (!('linkedin_url' in data) || isValidUrl(data.linkedin_url)) &&
+             (!('last_contacted' in data) || isValidDateString(data.last_contacted));
+    }
+
+    function isValidActivity(data) {
+      return data.keys().hasAll(['lead_id', 'owner_id', 'type', 'timestamp']) &&
+             data.owner_id == request.auth.uid &&
+             data.type in ['Call', 'Message', 'Meeting', 'Training', 'Note'] &&
+             data.content is string && data.content.size() < 5000 &&
+             isValidDateString(data.timestamp);
+    }
+
+    function isValidExpense(data) {
+      return data.keys().hasAll(['owner_id', 'amount', 'category', 'date']) &&
+             data.owner_id == request.auth.uid &&
+             data.amount is number && data.amount >= 0 &&
+             data.category in ['Samples & Demos', 'Travel', 'Subscriptions'] &&
+             isValidDateString(data.date);
+    }
+
+    function isValidTask(data) {
+      return data.keys().hasAll(['owner_id', 'title', 'completed']) &&
+             data.owner_id == request.auth.uid &&
+             data.title is string && data.title.size() > 0 && data.title.size() < 500 &&
+             data.completed is bool &&
+             (!('reminder_time' in data) || data.reminder_time == null || isValidDateString(data.reminder_time));
+    }
+
+    function isValidGoal(data) {
+      return hasOnlyAllowedFields(['owner_id', 'title', 'target', 'current', 'unit', 'category', 'created_at']) &&
+             data.owner_id is string && data.owner_id.size() > 0 &&
+             data.title is string && data.title.size() > 0 && data.title.size() < 100 &&
+             data.target is number && data.target > 0 &&
+             data.current is number && data.current >= 0 &&
+             data.unit is string && data.unit.size() > 0 && data.unit.size() < 20 &&
+             data.category in ['prospecting', 'sales', 'team', 'other'] &&
+             isValidDateString(data.created_at);
+    }
+
+    function isValidCustomer(data) {
+      return data.keys().hasAll(['owner_id', 'name', 'status']) &&
+             data.owner_id == request.auth.uid &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 200 &&
+             data.status in ['Active', 'Inactive'] &&
+             (!('email' in data) || isValidEmail(data.email)) &&
+             (!('last_purchase' in data) || isValidDateString(data.last_purchase));
+    }
+
+    function isValidAppointment(data) {
+      return data.keys().hasAll(['owner_id', 'title', 'start_time', 'end_time', 'status']) &&
+             data.owner_id == request.auth.uid &&
+             data.title is string && data.title.size() > 0 && data.title.size() < 200 &&
+             isValidDateString(data.start_time) &&
+             isValidDateString(data.end_time) &&
+             data.status in ['Scheduled', 'Completed', 'Cancelled', 'No Show'] &&
+             (!('description' in data) || data.description is string) &&
+             (!('location' in data) || data.location is string) &&
+             (!('lead_id' in data) || data.lead_id is string) &&
+             (!('customer_id' in data) || data.customer_id is string);
+    }
+
+function isValidResource(data) {
+      return data.keys().hasAll(['title', 'url', 'type', 'category']) &&
+             data.title is string && data.title.size() > 0 && data.title.size() < 200 &&
+             isValidUrl(data.url) &&
+             data.type in ['PDF', 'Video', 'Link'] &&
+             data.category in ['Product Demo', 'Training Video', 'Opp', 'PDF Materials', 'Other'];
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow create: if (isOwner(userId) || isAdmin()) && 
+                      isValidUser(request.resource.data) && 
+                      (isAdmin() || request.resource.data.role == 'user' || request.auth.token.email == "bennietay.agency@gmail.com");
+      allow update: if (isOwner(userId) || isAdmin()) && 
+                      isValidUser(request.resource.data) && 
+                      (isAdmin() || request.resource.data.role == resource.data.role);
+      allow delete: if isAdmin();
+    }
+
+    match /leads/{leadId} {
+      allow read: if isDocOwner() || isAdmin();
+      allow create: if isAuthenticated() && isValidLead(request.resource.data);
+      allow update: if isDocOwner() && isValidLead(request.resource.data) && uidNotModified();
+      allow delete: if isDocOwner() || isAdmin();
+    }
+
+    match /customers/{customerId} {
+      allow read: if isDocOwner() || isAdmin();
+      allow create: if isAuthenticated() && isValidCustomer(request.resource.data);
+      allow update: if isDocOwner() && isValidCustomer(request.resource.data) && uidNotModified();
+      allow delete: if isDocOwner() || isAdmin();
+    }
+
+    match /activities/{activityId} {
+      allow read: if isDocOwner() || isAdmin();
+      allow create: if isAuthenticated() && isValidActivity(request.resource.data);
+      allow update: if isDocOwner() && isValidActivity(request.resource.data) && uidNotModified();
+      allow delete: if isDocOwner() || isAdmin();
+    }
+
+    match /appointments/{appointmentId} {
+      allow read: if isDocOwner() || isAdmin();
+      allow create: if isAuthenticated() && isValidAppointment(request.resource.data);
+      allow update: if isDocOwner() && isValidAppointment(request.resource.data) && uidNotModified();
+      allow delete: if isDocOwner() || isAdmin();
+    }
+
+    match /expenses/{expenseId} {
+      allow read: if isDocOwner() || isAdmin();
+      allow create: if isAuthenticated() && isValidExpense(request.resource.data);
+      allow update: if isDocOwner() && isValidExpense(request.resource.data) && uidNotModified();
+      allow delete: if isDocOwner() || isAdmin();
+    }
+
+    match /tasks/{taskId} {
+      allow read: if isDocOwner() || isAdmin();
+      allow create: if isAuthenticated() && isValidTask(request.resource.data);
+      allow update: if isDocOwner() && isValidTask(request.resource.data) && uidNotModified();
+      allow delete: if isDocOwner() || isAdmin();
+    }
+
+    match /goals/{goalId} {
+      allow read: if isDocOwner() || isAdmin();
+      allow create: if isAuthenticated() && uidUnchanged() && isValidGoal(request.resource.data);
+      allow update: if isDocOwner() && uidNotModified() && isValidGoal(request.resource.data);
+      allow delete: if isDocOwner() || isAdmin();
+    }
+
+    match /resources/{resourceId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isAdmin() && isValidResource(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /team_activities/{activityId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+    }
+
+    match /settings/{settingId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+  }
+}

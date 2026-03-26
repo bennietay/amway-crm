@@ -1,0 +1,214 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile",
+      "description": "Amway business owner profile",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "amway_id": { "type": "string" },
+        "upline_id": { "type": "string" },
+        "pin_level": { "type": "string", "enum": ["3%", "6%", "9%", "12%", "15%", "18%", "Silver", "Gold", "Platinum", "Ruby", "Emerald", "Diamond"] },
+        "goal_pv": { "type": "number" },
+        "current_pv": { "type": "number" },
+        "current_bv": { "type": "number" },
+        "role": { "type": "string", "enum": ["admin", "user"] }
+      },
+      "required": ["name", "email"]
+    },
+    "Lead": {
+      "title": "Lead",
+      "description": "Potential business partner or customer",
+      "type": "object",
+      "properties": {
+        "owner_id": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "phone": { "type": "string" },
+        "source": { "type": "string" },
+        "status": { "type": "string", "enum": ["Prospect", "Invited", "Presented", "Follow-up", "Onboarded"] },
+        "linkedin_url": { "type": "string" },
+        "ai_score": { "type": "number" },
+        "last_contacted": { "type": "string", "format": "date-time" },
+        "bio": { "type": "string" },
+        "interest": { "type": "string", "enum": ["Product", "Business", "Both"] },
+        "opp_video_url": { "type": "string" },
+        "product_demo_url": { "type": "string" },
+        "notes": { "type": "string" }
+      },
+      "required": ["owner_id", "name", "status"]
+    },
+    "Activity": {
+      "title": "Activity",
+      "description": "Lead interaction or task log",
+      "type": "object",
+      "properties": {
+        "lead_id": { "type": "string" },
+        "owner_id": { "type": "string" },
+        "type": { "type": "string", "enum": ["Call", "Message", "Meeting", "Training", "Note"] },
+        "content": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["lead_id", "owner_id", "type", "timestamp"]
+    },
+    "Expense": {
+      "title": "Expense",
+      "description": "Business expense entry",
+      "type": "object",
+      "properties": {
+        "owner_id": { "type": "string" },
+        "amount": { "type": "number" },
+        "category": { "type": "string", "enum": ["Samples & Demos", "Travel", "Subscriptions"] },
+        "description": { "type": "string" },
+        "date": { "type": "string", "format": "date-time" }
+      },
+      "required": ["owner_id", "amount", "category", "date"]
+    },
+    "Task": {
+      "title": "Task",
+      "description": "Daily action stack item",
+      "type": "object",
+      "properties": {
+        "owner_id": { "type": "string" },
+        "title": { "type": "string" },
+        "completed": { "type": "boolean" },
+        "reminder_time": { "type": "string", "format": "date-time" },
+        "created_at": { "type": "string", "format": "date-time" }
+      },
+      "required": ["owner_id", "title", "completed"]
+    },
+    "Resource": {
+      "title": "Resource",
+      "description": "Shared training or marketing asset",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "url": { "type": "string" },
+        "type": { "type": "string", "enum": ["PDF", "Video", "Link"] },
+        "category": { "type": "string", "enum": ["Product Demo", "Training Video", "Opp", "PDF Materials", "Other"] },
+        "owner_id": { "type": "string" },
+        "created_at": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "url", "type", "category"]
+    },
+    "Appointment": {
+      "title": "Appointment",
+      "description": "Scheduled business meeting",
+      "type": "object",
+      "properties": {
+        "owner_id": { "type": "string" },
+        "lead_id": { "type": "string" },
+        "customer_id": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "start_time": { "type": "string", "format": "date-time" },
+        "end_time": { "type": "string", "format": "date-time" },
+        "location": { "type": "string" },
+        "status": { "type": "string", "enum": ["Scheduled", "Completed", "Cancelled", "No Show"] },
+        "created_at": { "type": "string", "format": "date-time" }
+      },
+      "required": ["owner_id", "title", "start_time", "end_time", "status"]
+    },
+    "Goal": {
+      "title": "Goal",
+      "description": "A daily or long-term goal for the user.",
+      "type": "object",
+      "properties": {
+        "owner_id": { "type": "string" },
+        "title": { "type": "string" },
+        "target": { "type": "number" },
+        "current": { "type": "number" },
+        "unit": { "type": "string" },
+        "category": { "type": "string", "enum": ["prospecting", "sales", "team", "other"] },
+        "created_at": { "type": "string", "format": "date-time" }
+      },
+      "required": ["owner_id", "title", "target", "current", "unit", "category", "created_at"]
+    },
+    "Customer": {
+      "title": "Customer",
+      "description": "Existing Amway customer",
+      "type": "object",
+      "properties": {
+        "owner_id": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "phone": { "type": "string" },
+        "status": { "type": "string", "enum": ["Active", "Inactive"] },
+        "last_purchase": { "type": "string", "format": "date-time" },
+        "total_pv": { "type": "number" },
+        "notes": { "type": "string" },
+        "created_at": { "type": "string", "format": "date-time" }
+      },
+      "required": ["owner_id", "name", "status"]
+    },
+    "TeamActivity": {
+      "title": "Team Activity",
+      "description": "Log of team member actions",
+      "type": "object",
+      "properties": {
+        "user_id": { "type": "string" },
+        "user_name": { "type": "string" },
+        "action": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["user_id", "user_name", "action", "timestamp"]
+    },
+    "SystemSettings": {
+      "title": "System Settings",
+      "description": "Global application configuration",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" }
+      },
+      "required": ["name"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profiles"
+    },
+    "/leads/{leadId}": {
+      "schema": "Lead",
+      "description": "Business leads"
+    },
+    "/customers/{customerId}": {
+      "schema": "Customer",
+      "description": "Existing customers"
+    },
+    "/activities/{activityId}": {
+      "schema": "Activity",
+      "description": "Interaction logs"
+    },
+    "/appointments/{appointmentId}": {
+      "schema": "Appointment",
+      "description": "Scheduled meetings"
+    },
+    "/expenses/{expenseId}": {
+      "schema": "Expense",
+      "description": "Business expenses"
+    },
+    "/tasks/{taskId}": {
+      "schema": "Task",
+      "description": "Daily tasks"
+    },
+    "/resources/{resourceId}": {
+      "schema": "Resource",
+      "description": "Shared assets"
+    },
+    "/goals/{goalId}": {
+      "schema": "Goal",
+      "description": "User goals"
+    },
+    "/team_activities/{activityId}": {
+      "schema": "TeamActivity",
+      "description": "Team activity logs"
+    },
+    "/settings/{settingId}": {
+      "schema": "SystemSettings",
+      "description": "Global system settings"
+    }
+  }
+}
